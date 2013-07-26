@@ -1,0 +1,1 @@
+#import "SynthesizeSingleton.h"
