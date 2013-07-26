@@ -7,6 +7,7 @@
 //
 
 #import "BrowserViewController.h"
+#import "DownloadManager.h"
 
 @interface BrowserViewController ()<UISearchBarDelegate, UIWebViewDelegate, UITextFieldDelegate, UITableViewDataSource, UITableViewDelegate,UISearchDisplayDelegate>
 @property (nonatomic, strong) UIWebView *browser;
@@ -44,6 +45,15 @@
 {
     NSURLRequest *req = [NSURLRequest requestWithURL:[NSURL URLWithString:@"http://www.baidu.com"]];
     [_browser loadRequest:req];
+    
+    NSFileManager *manager = [NSFileManager defaultManager];
+    if (![manager fileExistsAtPath:[JJUtils fullPathInLibraryDirectory:@"musicCache"]]) {
+        [manager createDirectoryAtPath:[JJUtils fullPathInLibraryDirectory:@"musicCache"] withIntermediateDirectories:NO attributes:nil error:nil];
+    }
+    if (![manager fileExistsAtPath:[JJUtils fullPathInDocumentDirectory:@"music"]]) {
+        [manager createDirectoryAtPath:[JJUtils fullPathInDocumentDirectory:@"music"] withIntermediateDirectories:NO attributes:nil error:nil];
+    }
+
 }
 
 #pragma mark - SearchBarDelegate
@@ -98,11 +108,7 @@
 - (BOOL)webView:(UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType
 {
     if ([JJUtils shouldDownloadTheUrl:request.URL]) {
-        UIViewController *preVC = [[UIViewController alloc] init];
-        preVC.view.backgroundColor = [UIColor yellowColor];
-        [self presentViewController:preVC animated:YES completion:^{
-            
-        }];
+        [[DownloadManager sharedDownloadManager] downloadMusicByURL:request.URL];
         return NO;
     }
     return YES;
@@ -110,7 +116,6 @@
 
 - (void)webViewDidStartLoad:(UIWebView *)webView
 {
-    NSLog(@"1");
 }
 
 - (void)webView:(UIWebView *)webView didFailLoadWithError:(NSError *)error
