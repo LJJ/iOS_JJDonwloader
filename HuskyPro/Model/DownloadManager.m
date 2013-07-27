@@ -7,7 +7,7 @@
 //
 
 #import "DownloadManager.h"
-#import "ASIHTTPRequest.h"
+
 
 @interface DownloadManager ()<ASIHTTPRequestDelegate>
 @property (strong) NSOperationQueue *downloadQueue;
@@ -34,26 +34,55 @@ SYNTHESIZE_SINGLETON_FOR_CLASS(DownloadManager)
 
 - (void)downloadMusicByURL:(NSURL *)url
 {
-    NSString *filePath = [JJUtils getCutedPathWithPath:url.absoluteString];
-    NSArray *components = [filePath componentsSeparatedByString:@"."];
-    NSString *fileType = [components objectAtIndex:1];
-    NSString *fileName = [components objectAtIndex:0];
-    
         
     if (!_downloadQueue) {
         _downloadQueue = [[NSOperationQueue alloc] init];
     }
     ASIHTTPRequest *req = [ASIHTTPRequest requestWithURL:url];
+    [self configRequest:req];
+
+    [_downloadQueue addOperation:req];
+}
+
+- (void)configRequest:(ASIHTTPRequest *)req
+{
+    NSString *filePath = [JJUtils getCutedPathWithPath:req.url.absoluteString];
+    NSArray *components = [filePath componentsSeparatedByString:@"."];
+    NSString *fileType = [components objectAtIndex:1];
+    NSString *fileName = [components objectAtIndex:0];
+    
     req.delegate = self;
     req.allowResumeForFileDownloads = YES;
     UIProgressView *myprogress = [[UIProgressView alloc] init];
+    myprogress.frame = CGRectMake(100, 30, 200, 20);
     req.downloadProgressDelegate = myprogress;
     req.temporaryFileDownloadPath = [JJUtils fullPathInLibraryDirectory:[NSString stringWithFormat:@"musicCache/%@.download",fileName]];
     req.downloadDestinationPath = [JJUtils fullPathInDocumentDirectory:[NSString stringWithFormat:@"music/%@.%@",fileName,fileType]];
     
-    req.userInfo = [NSDictionary dictionaryWithObjectsAndKeys:myprogress, @"progress", fileName, @"name", nil];
+    __weak ASIHTTPRequest *request = req;
+    req.userInfo = [NSDictionary dictionaryWithObjectsAndKeys:myprogress, @"progress", fileName, @"name", request, @"request", req.url,@"url", nil];
+}
 
-    [_downloadQueue addOperation:req];
+- (void)suspendOrRevoverDownload:(ASIHTTPRequest *)request
+{
+    NSInteger row = [_tasks indexOfObject:request.userInfo];
+    if (![request isCancelled]) {
+        [request clearDelegatesAndCancel];
+        if ([_delegate respondsToSelector:@selector(suspendOneTaskAtIndex:)]) {
+            [_delegate suspendOneTaskAtIndex:row];
+        }
+        
+    }
+    else {
+        ASIHTTPRequest *req = [[ASIHTTPRequest alloc] initWithURL:[request.userInfo objectForKey:@"url"]];
+        [self configRequest:req];
+        [_tasks replaceObjectAtIndex:row withObject:req.userInfo];
+        if ([_delegate respondsToSelector:@selector(recoverOneTaskAtIndex:withAllInfo:)]) {
+            [_delegate recoverOneTaskAtIndex:row withAllInfo:req.userInfo];
+        }
+        [_downloadQueue addOperation:req];
+    }
+    
 }
 
 #pragma mark - asihttprequest delegate

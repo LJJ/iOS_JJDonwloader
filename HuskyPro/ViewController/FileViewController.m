@@ -8,6 +8,7 @@
 
 #import "FileViewController.h"
 #import "DownloadManager.h"
+#import "ASIHTTPRequest.h"
 
 @interface FileViewController ()<UITableViewDataSource, UITableViewDelegate, DownloadManagerDelegate>
 @property (nonatomic, strong) UITableView *downloadTable;
@@ -46,8 +47,31 @@
     [_downloadTable reloadData];
 }
 
+- (void)suspendOneTaskAtIndex:(NSInteger)index
+{
+    
+}
+
+- (void)recoverOneTaskAtIndex:(NSInteger)index withAllInfo:(NSDictionary *)userInfo
+{
+    UITableViewCell *cell = [_downloadTable cellForRowAtIndexPath:[NSIndexPath indexPathForRow:index inSection:0]];
+    for (UIView *progress in cell.subviews) {
+        if ([progress isKindOfClass:[UIProgressView class]]) {
+            [progress removeFromSuperview];
+            __weak UIProgressView *newProgress = [userInfo objectForKey:@"progress"];
+            newProgress.progress = ((UIProgressView *)progress).progress;
+            [cell addSubview:newProgress];
+        }
+    }
+}
+
 #pragma mark - UITableViewDelegate
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    [[DownloadManager sharedDownloadManager] suspendOrRevoverDownload:[[_tasks objectAtIndex:indexPath.row] objectForKey:@"request"]];
+}
+
+- (void)tableView:(UITableView *)tableView didDeselectRowAtIndexPath:(NSIndexPath *)indexPath
 {
     
 }
@@ -77,7 +101,6 @@
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:identifier];
         cell.textLabel.text = [[_tasks objectAtIndex:indexPath.row] objectForKey:@"name"];
         UIProgressView *progress = [[_tasks objectAtIndex:indexPath.row] objectForKey:@"progress"];
-        progress.frame = CGRectMake(100, 30, 200, 20);
         [cell addSubview:progress];
     }
     return cell;
