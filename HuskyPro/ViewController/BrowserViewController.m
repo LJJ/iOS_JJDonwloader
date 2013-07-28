@@ -8,22 +8,50 @@
 
 #import "BrowserViewController.h"
 #import "DownloadManager.h"
+#import "TFHpple.h"
 
 @interface BrowserViewController ()<UISearchBarDelegate, UIWebViewDelegate, UITextFieldDelegate, UITableViewDataSource, UITableViewDelegate,UISearchDisplayDelegate>
 @property (nonatomic, strong) UIWebView *browser;
 @property (nonatomic, strong) UITextField *address;
 @property (nonatomic, strong) UISearchBar *searchBar;
 @property (nonatomic, strong) NSMutableArray *historyData;
+@property (nonatomic, strong) UITableView *resultTable;
 @end
 
 @implementation BrowserViewController
+
+- (id)init
+{
+    if (self = [super init]) {
+        NSURL *url = [NSURL URLWithString:[@"http://music.baidu.com/search?key=那些年" stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]];
+        NSData *data = [[NSData alloc] initWithContentsOfURL:url];
+        // Create parser
+        TFHpple *xpathParser = [[TFHpple alloc] initWithHTMLData:data];
+        //Get all the cells of the 2nd row of the 3rd table
+        NSArray *elements  = [xpathParser searchWithXPathQuery:@"/html/body/div[@class='music-main']/div/div/div[@class='main-body']/div/div[@class='search-result-container']/div[1]/ul/li/div/span[@class='song-title']/a/em/em"];
+        // Access the first cell
+        
+        for(int i=0;i<[elements count];i++)
+        {
+            TFHppleElement *element = [elements objectAtIndex:i];
+            NSLog(@"%@", element.raw);
+        }
+    }
+    return self;
+}
 
 - (void)loadView
 {
     [super loadView];
     _browser = [[UIWebView alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height)];
     _browser.delegate = self;
-    [self.view addSubview:_browser];
+//    [self.view addSubview:_browser];
+    
+    _resultTable = [[UITableView alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height)];
+//    _resultTable.delegate = self;
+//    _resultTable.dataSource = self;
+    [self.view addSubview:_resultTable];
+    
     _address = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, 220, 40)];
     _address.borderStyle = UITextBorderStyleRoundedRect;
     _address.contentVerticalAlignment = UIControlContentVerticalAlignmentCenter;
@@ -43,7 +71,7 @@
 
 - (void)viewDidLoad
 {
-    NSURLRequest *req = [NSURLRequest requestWithURL:[NSURL URLWithString:@"http://www.baidu.com"]];
+    NSURLRequest *req = [NSURLRequest requestWithURL:[NSURL URLWithString:@"http://music.baidu.com"]];
     [_browser loadRequest:req];
 
     NSFileManager *manager = [NSFileManager defaultManager];
@@ -55,6 +83,9 @@
     }
 
 }
+
+#pragma mark - my method
+
 
 #pragma mark - SearchBarDelegate
 - (void)searchBarSearchButtonClicked:(UISearchBar *)searchBar
@@ -75,34 +106,34 @@
 
 
 
-//#pragma mark - UITableDatasource
-//- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
-//{
-//    return [_historyData count];
-//}
-//
-//- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
-//{
-//    return 1;
-//}
-//
-//- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
-//{
-//    static NSString *identifier = @"historyCell";
-//    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:identifier];
-//    if (cell == nil) {
-//        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:identifier];
-//        cell.textLabel.text = [_historyData objectAtIndex:indexPath.row];
-//    }
-//    return cell;
-//}
+#pragma mark - UITableDatasource
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
+{
+    return [_historyData count];
+}
 
-//#pragma mark - UITableDelegate
-//
-//- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
-//{
-//    _searchBar.text = [_historyData objectAtIndex:indexPath.row];
-//}
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
+{
+    return 1;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    static NSString *identifier = @"historyCell";
+    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:identifier];
+    if (cell == nil) {
+        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:identifier];
+        cell.textLabel.text = [_historyData objectAtIndex:indexPath.row];
+    }
+    return cell;
+}
+
+#pragma mark - UITableDelegate
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    _searchBar.text = [_historyData objectAtIndex:indexPath.row];
+}
 
 #pragma mark - UIWebView
 - (BOOL)webView:(UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType
