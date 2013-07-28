@@ -8,7 +8,8 @@
 
 #import "BrowserViewController.h"
 #import "DownloadManager.h"
-#import "TFHpple.h"
+#import <libxml/HTMLparser.h>
+#import <libxml/xpath.h>
 
 @interface BrowserViewController ()<UISearchBarDelegate, UIWebViewDelegate, UITextFieldDelegate, UITableViewDataSource, UITableViewDelegate,UISearchDisplayDelegate>
 @property (nonatomic, strong) UIWebView *browser;
@@ -25,20 +26,138 @@
     if (self = [super init]) {
         NSURL *url = [NSURL URLWithString:[@"http://music.baidu.com/search?key=那些年" stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]];
         NSData *data = [[NSData alloc] initWithContentsOfURL:url];
-        // Create parser
-        TFHpple *xpathParser = [[TFHpple alloc] initWithHTMLData:data];
-        //Get all the cells of the 2nd row of the 3rd table
-        NSArray *elements  = [xpathParser searchWithXPathQuery:@"/html/body/div[@class='music-main']/div/div/div[@class='main-body']/div/div[@class='search-result-container']/div[1]/ul/li/div/span[@class='song-title']/a/em/em"];
-        // Access the first cell
         
-        for(int i=0;i<[elements count];i++)
+        NSString *query = @"/html/body/div[@class='music-main']/div/div/div[@class='main-body']/div/div[@class='search-result-container']/div[1]/ul/li/div/span[@class='song-title']/a/em/em/text()";
+        xmlDocPtr document = htmlReadMemory([data bytes], (int)[data length], "", nil, HTML_PARSE_NOWARNING | HTML_PARSE_NOERROR);
+        xmlXPathContextPtr xpathCtx = xmlXPathNewContext(document);
+        xmlXPathObjectPtr xpathObj = xmlXPathEvalExpression((xmlChar *)[query cStringUsingEncoding:NSUTF8StringEncoding], xpathCtx);
+        xmlNodeSetPtr nodes = xpathObj->nodesetval;
+        
+        NSMutableArray *resultNodes = [NSMutableArray array];
+        for (NSInteger i = 0; i < 1; i++)
         {
-            TFHppleElement *element = [elements objectAtIndex:i];
-            NSLog(@"%@", element.raw);
+            NSDictionary *nodeDictionary = DictionaryFromNode(nodes->nodeTab[i], nil,false);
+            if (nodeDictionary)
+            {
+                [resultNodes addObject:nodeDictionary];
+            }
         }
+        
+        /* Cleanup */
+        xmlXPathFreeObject(xpathObj);
+        xmlXPathFreeContext(xpathCtx);
+        
+        NSLog(@"node %@",[resultNodes objectAtIndex:0]);
+        
     }
     return self;
 }
+
+NSDictionary *DictionaryFromNode(xmlNodePtr currentNode, NSMutableDictionary *parentResult,BOOL parentContent)
+{
+    NSMutableDictionary *resultForNode = [NSMutableDictionary dictionary];
+    
+    if (currentNode->name)
+    {
+        NSString *currentNodeContent =
+        [NSString stringWithCString:(const char *)currentNode->name encoding:NSUTF8StringEncoding];
+        NSLog(@"name %@",currentNodeContent);
+        [resultForNode setObject:currentNodeContent forKey:@"nodeName"];
+
+    }
+    
+    if (currentNode->content && currentNode->content != (xmlChar *)-1)
+    {
+        NSString *currentNodeContent =
+        [NSString stringWithCString:(const char *)currentNode->content encoding:NSUTF8StringEncoding];
+        NSLog(@"content %@",currentNodeContent);
+        
+        if ([[resultForNode objectForKey:@"nodeName"] isEqual:@"text"] && parentResult)
+        {
+            if(parentContent)
+            {
+                [parentResult setObject:[currentNodeContent stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] forKey:@"nodeContent"];
+                return nil;
+            }
+            [resultForNode setObject:currentNodeContent forKey:@"nodeContent"];
+            //            NSLog(@"content: %@",currentNodeContent);
+            return resultForNode;
+            
+        }
+        else {
+            [resultForNode setObject:currentNodeContent forKey:@"nodeContent"];
+        }
+        
+        
+    }
+    
+    xmlAttr *attribute = currentNode->properties;
+    if (attribute)
+    {
+        NSMutableArray *attributeArray = [NSMutableArray array];
+        while (attribute)
+        {
+            NSMutableDictionary *attributeDictionary = [NSMutableDictionary dictionary];
+            NSString *attributeName =
+            [NSString stringWithCString:(const char *)attribute->name encoding:NSUTF8StringEncoding];
+            if (attributeName)
+            {
+                //                NSLog(@"Attribute Name Set: %@",attributeName);
+                [attributeDictionary setObject:attributeName forKey:@"attributeName"];
+            }
+            
+            if (attribute->children)
+            {
+                NSDictionary *childDictionary = DictionaryFromNode(attribute->children, attributeDictionary,true);
+                if (childDictionary)
+                {
+                    [attributeDictionary setObject:childDictionary forKey:@"attributeContent"];
+                }
+            }
+            
+            if ([attributeDictionary count] > 0)
+            {
+                [attributeArray addObject:attributeDictionary];
+            }
+            attribute = attribute->next;
+        }
+        
+        if ([attributeArray count] > 0)
+        {
+            [resultForNode setObject:attributeArray forKey:@"nodeAttributeArray"];
+        }
+    }
+    
+    xmlNodePtr childNode = currentNode->children;
+    if (childNode)
+    {
+        NSMutableArray *childContentArray = [NSMutableArray array];
+        while (childNode)
+        {
+            NSDictionary *childDictionary = DictionaryFromNode(childNode, resultForNode,false);
+            if (childDictionary)
+            {
+                [childContentArray addObject:childDictionary];
+            }
+            childNode = childNode->next;
+        }
+        if ([childContentArray count] > 0)
+        {
+            [resultForNode setObject:childContentArray forKey:@"nodeChildArray"];
+        }
+    }
+    
+    xmlBufferPtr buffer = xmlBufferCreate();
+    xmlNodeDump(buffer, currentNode->doc, currentNode, 0, 0);
+    
+    NSString *rawContent = [NSString stringWithCString:(const char *)buffer->content encoding:NSUTF8StringEncoding];
+    [resultForNode setObject:rawContent forKey:@"raw"];
+    
+    xmlBufferFree(buffer);
+    
+    return resultForNode;
+}
+
 
 - (void)loadView
 {
