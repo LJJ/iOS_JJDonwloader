@@ -8,9 +8,11 @@
 
 #import <Foundation/Foundation.h>
 
+
 @interface JJUtils : NSObject
 + (NSString *)fullPathInDocumentDirectory:(NSString *)path;
 + (NSString *)fullPathInLibraryDirectory:(NSString *)path;
 +(BOOL) shouldDownloadTheUrl:(NSURL *)url;
 +(NSString*) getCutedPathWithPath:(NSString *)path;
++(NSArray *)parseHTMLToMusicTableByUrl:(NSURL *)url;
 @end

@@ -7,6 +7,11 @@
 //
 
 #import "JJUtils.h"
+#import <string.h>
+#import <libxml/HTMLparser.h>
+#import <libxml/xpath.h>
+#import <libxml/tree.h>
+
 #define PRINTOBJECT(args...) 
 
 @implementation JJUtils
@@ -83,6 +88,97 @@
         
 	}
 }
+
+#pragma mark - HTML Parser
+
++(NSArray *)parseHTMLToMusicTableByUrl:(NSURL *)url
+{
+    NSData *data = [[NSData alloc] initWithContentsOfURL:url];
+    
+    NSString *query = @"/html/body/div[@class='music-main']/div/div/div[@class='main-body']/div/div[@class='search-result-container']/div[1]/ul/li/div";
+    xmlDocPtr document = htmlReadMemory([data bytes], (int)[data length], "", nil, HTML_PARSE_NOWARNING | HTML_PARSE_NOERROR);
+    xmlXPathContextPtr xpathCtx = xmlXPathNewContext(document);
+    xmlXPathObjectPtr xpathObj = xmlXPathEvalExpression((xmlChar *)[query cStringUsingEncoding:NSUTF8StringEncoding], xpathCtx);
+    xmlNodeSetPtr nodes = xpathObj->nodesetval;
+    
+    NSMutableArray *resultNodes = [NSMutableArray array];
+    for (NSInteger i = 0; i < 1; i++)
+    {
+        NSDictionary *nodeDictionary = DictionaryFromNode(nodes->nodeTab[i], nil,false);
+        if (nodeDictionary)
+        {
+            [resultNodes addObject:nodeDictionary];
+        }
+    }
+    
+    /* Cleanup */
+    xmlXPathFreeObject(xpathObj);
+    xmlXPathFreeContext(xpathCtx);
+    
+    return resultNodes;
+}
+
+xmlNodePtr FindNodeByNodeNameAndAttribute(xmlNodePtr currentNode, const char *nodeName, const char *attributeName)
+{
+    while (currentNode) {
+        if (currentNode && strcmp((const char *)currentNode->name, nodeName) == 0 ) {
+            if (attributeName) {
+                xmlAttr *attribute = currentNode->properties;
+                while (attribute) {
+                    if (strcmp((const char *)attribute->children->content, attributeName) == 0 ) {
+                        return currentNode;
+                    }
+                    attribute = attribute->next;
+                }
+            } else {
+                return currentNode;
+            }
+        }
+        currentNode = currentNode->next;
+    }
+    NSLog(@"find nothing");
+    return nil;
+}
+
+NSDictionary *DictionaryFromNode(xmlNodePtr currentNode, NSMutableDictionary *parentResult,BOOL parentContent)
+{
+    NSMutableDictionary *songInfo = [NSMutableDictionary dictionary];
+    NSMutableDictionary *singerInfo = [NSMutableDictionary dictionary];
+    
+    xmlNodePtr originNode = currentNode->children;
+    
+    xmlNodePtr childNode1 = FindNodeByNodeNameAndAttribute(originNode, "span", "song-title");
+    childNode1 = childNode1->children;
+    childNode1 = FindNodeByNodeNameAndAttribute(childNode1, "a", nil);
+    xmlAttr *attribute1 = childNode1->properties;
+    while (attribute1) {
+        [songInfo setObject:[NSString stringWithCString:(const char *)attribute1->children->content encoding:NSUTF8StringEncoding]
+                     forKey:[NSString stringWithCString:(const char *)attribute1->name encoding:NSUTF8StringEncoding]];
+        attribute1 = attribute1->next;
+    }
+    
+    xmlNodePtr childNode2 = FindNodeByNodeNameAndAttribute(originNode, "span", "singer");
+    childNode2 = childNode2->children;
+    childNode2 = FindNodeByNodeNameAndAttribute(childNode2, "span", "author_list");
+    xmlAttr *attribute2 = childNode2->properties;
+    while (attribute2) {
+        [singerInfo setObject:[NSString stringWithCString:(const char *)attribute2->children->content encoding:NSUTF8StringEncoding]
+                     forKey:[NSString stringWithCString:(const char *)attribute2->name encoding:NSUTF8StringEncoding]];
+        attribute2 = attribute2->next;
+    }
+    
+    xmlBufferPtr buffer = xmlBufferCreate();
+    xmlNodeDump(buffer, currentNode->doc, currentNode, 0, 0);
+    
+//    NSString *rawContent = [NSString stringWithCString:(const char *)buffer->content encoding:NSUTF8StringEncoding];
+//    [resultForNode setObject:rawContent forKey:@"raw"];
+    
+    xmlBufferFree(buffer);
+    NSDictionary *resultForNode = [NSDictionary dictionaryWithObjectsAndKeys:songInfo, @"song", singerInfo, @"singer", nil];
+    return resultForNode;
+}
+
+
 
 
 @end
