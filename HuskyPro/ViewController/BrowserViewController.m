@@ -7,13 +7,11 @@
 //
 
 #import "BrowserViewController.h"
-#import "DownloadManager.h"
+#import "DownloadViewController.h"
 #import "MusicCell.h"
 
-@interface BrowserViewController ()<UISearchBarDelegate, UIWebViewDelegate, UITextFieldDelegate, UITableViewDataSource, UITableViewDelegate,UISearchDisplayDelegate>
-@property (nonatomic, strong) UIViewController *detailVC;
-@property (nonatomic, strong) UIWebView *browser;
-@property (nonatomic, strong) UITextField *address;
+@interface BrowserViewController ()<UISearchBarDelegate, UITableViewDataSource, UITableViewDelegate,UISearchDisplayDelegate>
+@property (nonatomic, strong) DownloadViewController *downloadVC;
 @property (nonatomic, strong) UISearchBar *searchBar;
 @property (nonatomic, strong) NSMutableArray *musicDatasource;
 @property (nonatomic, strong) UITableView *resultTable;
@@ -24,8 +22,9 @@
 - (id)init
 {
     if (self = [super init]) {
-        NSURL *url = [NSURL URLWithString:[@"http://music.baidu.com/search?key=那些年" stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]];
+        NSURL *url = [NSURL URLWithString:[@"http://music.baidu.com/search?key=你比从前快乐" stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]];
         _musicDatasource = [JJUtils parseHTMLToMusicTableByUrl:url];
+        _downloadVC = [[DownloadViewController alloc] init];
     }
     return self;
 }
@@ -35,23 +34,12 @@
     [super loadView];
     self.view.frame = CGRectMake(0, 0, 320, 459);
     self.navigationItem.title = @"Musics";
-    _detailVC = [[UIViewController alloc] init];
-    _browser = [[UIWebView alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height)];
-    _browser.delegate = self;
-    [_detailVC.view addSubview:_browser];
     
     _resultTable = [[UITableView alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height)];
     _resultTable.delegate = self;
     _resultTable.dataSource = self;
     _resultTable.tableHeaderView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 320, 40)];
     [self.view addSubview:_resultTable];
-    
-    _address = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, 220, 40)];
-    _address.borderStyle = UITextBorderStyleRoundedRect;
-    _address.contentVerticalAlignment = UIControlContentVerticalAlignmentCenter;
-    _address.returnKeyType = UIReturnKeyGo;
-    _address.clearButtonMode = UITextFieldViewModeWhileEditing;
-    _address.delegate = self;
     
     _searchBar = [[UISearchBar alloc] initWithFrame:CGRectMake(0, 0, 320, 40)];
     _searchBar.delegate = self;
@@ -61,9 +49,6 @@
 
 - (void)viewDidLoad
 {
-    NSURLRequest *req = [NSURLRequest requestWithURL:[NSURL URLWithString:@"http://music.baidu.com"]];
-    [_browser loadRequest:req];
-
     NSFileManager *manager = [NSFileManager defaultManager];
     if (![manager fileExistsAtPath:[JJUtils fullPathInLibraryDirectory:@"musicCache"]]) {
         [manager createDirectoryAtPath:[JJUtils fullPathInLibraryDirectory:@"musicCache"] withIntermediateDirectories:NO attributes:nil error:nil];
@@ -88,15 +73,6 @@
     [_resultTable reloadData];
     [searchBar resignFirstResponder];
 }
-
-#pragma mark - UITextViewDelegate
-- (BOOL)textFieldShouldReturn:(UITextField *)textField
-{
-    NSURLRequest *req = [NSURLRequest requestWithURL:[NSURL URLWithString:[@"http://" stringByAppendingString:textField.text]]];
-    [_browser loadRequest:req];
-    return YES;
-}
-
 
 
 #pragma mark - UITableDatasource
@@ -127,30 +103,10 @@
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    [self.navigationController pushViewController:_detailVC animated:YES];
-    _detailVC.navigationItem.title = @"Download";
-    NSURL *url =[NSURL URLWithString:[@"http://music.baidu.com" stringByAppendingFormat:@"%@/download",[[[_musicDatasource objectAtIndex:indexPath.row] objectForKey:@"song"] objectForKey:@"href"]]];
-    [_browser loadRequest:[NSURLRequest requestWithURL:url]];
-    
-}
-
-#pragma mark - UIWebView
-- (BOOL)webView:(UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType
-{
-    if ([JJUtils shouldDownloadTheUrl:request.URL]) {
-        [[DownloadManager sharedDownloadManager] downloadMusicByURL:request.URL];
-        return NO;
-    }
-    return YES;
-}
-
-- (void)webViewDidStartLoad:(UIWebView *)webView
-{
-}
-
-- (void)webView:(UIWebView *)webView didFailLoadWithError:(NSError *)error
-{
-    NSLog(@"%@",[error localizedDescription]);
+    [self.navigationController pushViewController:_downloadVC animated:YES];
+    __weak NSDictionary *dict = [_musicDatasource objectAtIndex:indexPath.row];
+    NSURL *url =[NSURL URLWithString:[@"http://music.baidu.com" stringByAppendingFormat:@"%@/download",[[dict objectForKey:@"song"] objectForKey:@"href"]]];
+    [_downloadVC preapreDownloadVCWithUrl:url withInfo:dict];
 }
 
 @end

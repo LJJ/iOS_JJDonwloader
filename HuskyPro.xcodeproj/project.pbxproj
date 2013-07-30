@@ -50,6 +50,7 @@
 		0E95DB9017A4D8F700765B06 /* TFHppleElement.m in Sources */ = {isa = PBXBuildFile; fileRef = 0E95DB8C17A4D8F700765B06 /* TFHppleElement.m */; };
 		0E95DB9117A4D8F700765B06 /* XPathQuery.m in Sources */ = {isa = PBXBuildFile; fileRef = 0E95DB8E17A4D8F700765B06 /* XPathQuery.m */; };
 		0EBA85E4179F712E0062F807 /* BrowserToolBarView.m in Sources */ = {isa = PBXBuildFile; fileRef = 0EBA85E3179F712E0062F807 /* BrowserToolBarView.m */; };
+		0EEDF50E17A802F100715EDA /* DownloadViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 0EEDF50D17A802F100715EDA /* DownloadViewController.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -132,6 +133,8 @@
 		0E95DB8E17A4D8F700765B06 /* XPathQuery.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = XPathQuery.m; sourceTree = "<group>"; };
 		0EBA85E2179F712E0062F807 /* BrowserToolBarView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BrowserToolBarView.h; sourceTree = "<group>"; };
 		0EBA85E3179F712E0062F807 /* BrowserToolBarView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BrowserToolBarView.m; sourceTree = "<group>"; };
+		0EEDF50C17A802F100715EDA /* DownloadViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DownloadViewController.h; sourceTree = "<group>"; };
+		0EEDF50D17A802F100715EDA /* DownloadViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DownloadViewController.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -250,6 +253,8 @@
 				0E26CAC0179EC7810061AFA3 /* SettingViewController.m */,
 				0E26CAC2179EC7900061AFA3 /* PlayerViewController.h */,
 				0E26CAC3179EC7900061AFA3 /* PlayerViewController.m */,
+				0EEDF50C17A802F100715EDA /* DownloadViewController.h */,
+				0EEDF50D17A802F100715EDA /* DownloadViewController.m */,
 			);
 			path = ViewController;
 			sourceTree = "<group>";
@@ -447,6 +452,7 @@
 				0E95DB9017A4D8F700765B06 /* TFHppleElement.m in Sources */,
 				0E95DB9117A4D8F700765B06 /* XPathQuery.m in Sources */,
 				0E937CAC17A66B4A002FF0E5 /* MusicCell.m in Sources */,
+				0EEDF50E17A802F100715EDA /* DownloadViewController.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

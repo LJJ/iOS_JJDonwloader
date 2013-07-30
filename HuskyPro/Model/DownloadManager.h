@@ -23,7 +23,7 @@
 SYNTHESIZE_SINGLETON_FOR_HEADER(DownloadManager)
 @property (weak) id<DownloadManagerDelegate> delegate;
 
-- (void)downloadMusicByURL:(NSURL *)url;
+- (void)downloadMusicByURL:(NSURL *)url withName:(NSString *)name andAuthor:(NSString *)artist;
 - (NSArray *)refreshDownloadTasks;
 
 - (void)suspendOrRevoverDownload:(ASIHTTPRequest *)request;

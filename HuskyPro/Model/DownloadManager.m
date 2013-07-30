@@ -32,35 +32,40 @@ SYNTHESIZE_SINGLETON_FOR_CLASS(DownloadManager)
     return _tasks;
 }
 
-- (void)downloadMusicByURL:(NSURL *)url
+- (void)downloadMusicByURL:(NSURL *)url withName:(NSString *)name andAuthor:(NSString *)artist
 {
-        
     if (!_downloadQueue) {
         _downloadQueue = [[NSOperationQueue alloc] init];
     }
     ASIHTTPRequest *req = [ASIHTTPRequest requestWithURL:url];
+    
+    NSString *filePath = [JJUtils getCutedPathWithPath:req.url.absoluteString];
+    NSArray *components = [filePath componentsSeparatedByString:@"."];
+    NSString *fileType = [components objectAtIndex:1];
+    
+    UIProgressView *myprogress = [[UIProgressView alloc] init];
+    __weak ASIHTTPRequest *request = req;
+    req.userInfo = [NSDictionary dictionaryWithObjectsAndKeys:myprogress, @"progress", name, @"name", fileType, @"type", artist, @"arthor", request, @"request", req.url,@"url", nil];
     [self configRequest:req];
+    
+    if ([_delegate respondsToSelector:@selector(downloadManager:taskNumberChangedWithInfo:)] && [_tasks indexOfObject:request.userInfo] == NSNotFound) {
+        [_tasks addObject:request.userInfo];
+        [_delegate downloadManager:self taskNumberChangedWithInfo:_tasks];
+    }
 
     [_downloadQueue addOperation:req];
+    req = nil;
 }
 
 - (void)configRequest:(ASIHTTPRequest *)req
 {
-    NSString *filePath = [JJUtils getCutedPathWithPath:req.url.absoluteString];
-    NSArray *components = [filePath componentsSeparatedByString:@"."];
-    NSString *fileType = [components objectAtIndex:1];
-    NSString *fileName = [components objectAtIndex:0];
-    
     req.delegate = self;
     req.allowResumeForFileDownloads = YES;
-    UIProgressView *myprogress = [[UIProgressView alloc] init];
-    myprogress.frame = CGRectMake(100, 30, 200, 20);
-    req.downloadProgressDelegate = myprogress;
-    req.temporaryFileDownloadPath = [JJUtils fullPathInLibraryDirectory:[NSString stringWithFormat:@"musicCache/%@.download",fileName]];
-    req.downloadDestinationPath = [JJUtils fullPathInDocumentDirectory:[NSString stringWithFormat:@"music/%@.%@",fileName,fileType]];
-    
-    __weak ASIHTTPRequest *request = req;
-    req.userInfo = [NSDictionary dictionaryWithObjectsAndKeys:myprogress, @"progress", fileName, @"name", request, @"request", req.url,@"url", nil];
+    __weak UIProgressView *myProgress = [req.userInfo objectForKey:@"progress"];
+    myProgress.frame = CGRectMake(100, 30, 200, 20);
+    req.downloadProgressDelegate = myProgress;
+    req.temporaryFileDownloadPath = [JJUtils fullPathInLibraryDirectory:[NSString stringWithFormat:@"musicCache/%@.download",[req.userInfo objectForKey:@"name"]]];
+    req.downloadDestinationPath = [JJUtils fullPathInDocumentDirectory:[NSString stringWithFormat:@"music/%@.%@",[req.userInfo objectForKey:@"name"],[req.userInfo objectForKey:@"type"]]];
 }
 
 - (void)suspendOrRevoverDownload:(ASIHTTPRequest *)request
@@ -75,12 +80,10 @@ SYNTHESIZE_SINGLETON_FOR_CLASS(DownloadManager)
     }
     else {
         ASIHTTPRequest *req = [[ASIHTTPRequest alloc] initWithURL:[request.userInfo objectForKey:@"url"]];
+        req.userInfo = request.userInfo;
         [self configRequest:req];
-        [_tasks replaceObjectAtIndex:row withObject:req.userInfo];
-        if ([_delegate respondsToSelector:@selector(recoverOneTaskAtIndex:withAllInfo:)]) {
-            [_delegate recoverOneTaskAtIndex:row withAllInfo:req.userInfo];
-        }
         [_downloadQueue addOperation:req];
+        request = nil;
     }
     
 }
@@ -94,10 +97,7 @@ SYNTHESIZE_SINGLETON_FOR_CLASS(DownloadManager)
 
 - (void)requestStarted:(ASIHTTPRequest *)request
 {
-    if ([_delegate respondsToSelector:@selector(downloadManager:taskNumberChangedWithInfo:)] && [_tasks indexOfObject:request.userInfo] == NSNotFound) {
-        [_tasks addObject:request.userInfo];
-        [_delegate downloadManager:self taskNumberChangedWithInfo:_tasks];
-    }
+    
 }
 
 - (void)requestFinished:(ASIHTTPRequest *)request
