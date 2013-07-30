@@ -25,11 +25,14 @@
     dictionnary = nil;
     
     BrowserViewController *browser = [[BrowserViewController alloc] init];
+    browser.title = @"music";
     FileViewController *fileManager = [[FileViewController alloc] init];
     PlaylistViewController *playlist = [[PlaylistViewController alloc] init];
     SettingViewController *setting = [[SettingViewController alloc] init];
     
-    _viewController.viewControllers = [NSArray arrayWithObjects:browser,fileManager,playlist,setting, nil];
+    UINavigationController *browserNav = [[UINavigationController alloc] initWithRootViewController:browser];
+    
+    _viewController.viewControllers = [NSArray arrayWithObjects:browserNav,fileManager,playlist,setting, nil];
     
     self.window.rootViewController = self.viewController;
     [self.window makeKeyAndVisible];

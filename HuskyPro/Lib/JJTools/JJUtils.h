@@ -14,5 +14,5 @@
 + (NSString *)fullPathInLibraryDirectory:(NSString *)path;
 +(BOOL) shouldDownloadTheUrl:(NSURL *)url;
 +(NSString*) getCutedPathWithPath:(NSString *)path;
-+(NSArray *)parseHTMLToMusicTableByUrl:(NSURL *)url;
++(NSMutableArray *)parseHTMLToMusicTableByUrl:(NSURL *)url;
 @end

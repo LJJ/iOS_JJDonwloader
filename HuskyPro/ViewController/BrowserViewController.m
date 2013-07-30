@@ -8,12 +8,14 @@
 
 #import "BrowserViewController.h"
 #import "DownloadManager.h"
+#import "MusicCell.h"
 
 @interface BrowserViewController ()<UISearchBarDelegate, UIWebViewDelegate, UITextFieldDelegate, UITableViewDataSource, UITableViewDelegate,UISearchDisplayDelegate>
+@property (nonatomic, strong) UIViewController *detailVC;
 @property (nonatomic, strong) UIWebView *browser;
 @property (nonatomic, strong) UITextField *address;
 @property (nonatomic, strong) UISearchBar *searchBar;
-@property (nonatomic, strong) NSMutableArray *historyData;
+@property (nonatomic, strong) NSMutableArray *musicDatasource;
 @property (nonatomic, strong) UITableView *resultTable;
 @end
 
@@ -23,10 +25,7 @@
 {
     if (self = [super init]) {
         NSURL *url = [NSURL URLWithString:[@"http://music.baidu.com/search?key=那些年" stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]];
-        NSArray *data = [JJUtils parseHTMLToMusicTableByUrl:url];
-        for (NSDictionary *dict in data) {
-            NSLog(@"%@",dict);
-        }
+        _musicDatasource = [JJUtils parseHTMLToMusicTableByUrl:url];
     }
     return self;
 }
@@ -34,13 +33,17 @@
 - (void)loadView
 {
     [super loadView];
+    self.view.frame = CGRectMake(0, 0, 320, 459);
+    self.navigationItem.title = @"Musics";
+    _detailVC = [[UIViewController alloc] init];
     _browser = [[UIWebView alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height)];
     _browser.delegate = self;
-//    [self.view addSubview:_browser];
+    [_detailVC.view addSubview:_browser];
     
     _resultTable = [[UITableView alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height)];
-//    _resultTable.delegate = self;
-//    _resultTable.dataSource = self;
+    _resultTable.delegate = self;
+    _resultTable.dataSource = self;
+    _resultTable.tableHeaderView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 320, 40)];
     [self.view addSubview:_resultTable];
     
     _address = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, 220, 40)];
@@ -50,14 +53,10 @@
     _address.clearButtonMode = UITextFieldViewModeWhileEditing;
     _address.delegate = self;
     
-    _searchBar = [[UISearchBar alloc] initWithFrame:CGRectMake(220, 0, 100, 40)];
+    _searchBar = [[UISearchBar alloc] initWithFrame:CGRectMake(0, 0, 320, 40)];
     _searchBar.delegate = self;
-    [self.view addSubview:_address];
-    [self.view addSubview:_searchBar];
-    
-    _historyData = [[NSMutableArray alloc] initWithObjects:@"1", nil];
-
-    
+//    [_resultTable.tableHeaderView addSubview:_address];
+    [_resultTable.tableHeaderView addSubview:_searchBar];
 }
 
 - (void)viewDidLoad
@@ -82,8 +81,11 @@
 - (void)searchBarSearchButtonClicked:(UISearchBar *)searchBar
 {
     NSURL *url = [NSURL URLWithString:[[@"http://music.baidu.com/search?key=" stringByAppendingString:searchBar.text] stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]];
-    NSURLRequest *req = [NSURLRequest requestWithURL:url];
-    [_browser loadRequest:req];
+    NSMutableArray *temp = [JJUtils parseHTMLToMusicTableByUrl:url];
+    if (temp) {
+        _musicDatasource = temp;
+    }
+    [_resultTable reloadData];
     [searchBar resignFirstResponder];
 }
 
@@ -100,7 +102,7 @@
 #pragma mark - UITableDatasource
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
-    return [_historyData count];
+    return [_musicDatasource count];
 }
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
@@ -111,11 +113,13 @@
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     static NSString *identifier = @"historyCell";
-    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:identifier];
+     MusicCell *cell = [tableView dequeueReusableCellWithIdentifier:identifier];
     if (cell == nil) {
-        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:identifier];
-        cell.textLabel.text = [_historyData objectAtIndex:indexPath.row];
+        cell = [[MusicCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:identifier];
     }
+    cell.singerLabel.text = [[[_musicDatasource objectAtIndex:indexPath.row] objectForKey:@"singer"] objectForKey:@"title"];
+    cell.textLabel.text = [[[_musicDatasource objectAtIndex:indexPath.row] objectForKey:@"song"] objectForKey:@"title"];
+    cell.detailTextLabel.text = [[[_musicDatasource objectAtIndex:indexPath.row] objectForKey:@"album"] objectForKey:@"title"];
     return cell;
 }
 
@@ -123,7 +127,11 @@
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    _searchBar.text = [_historyData objectAtIndex:indexPath.row];
+    [self.navigationController pushViewController:_detailVC animated:YES];
+    _detailVC.navigationItem.title = @"Download";
+    NSURL *url =[NSURL URLWithString:[@"http://music.baidu.com" stringByAppendingFormat:@"%@/download",[[[_musicDatasource objectAtIndex:indexPath.row] objectForKey:@"song"] objectForKey:@"href"]]];
+    [_browser loadRequest:[NSURLRequest requestWithURL:url]];
+    
 }
 
 #pragma mark - UIWebView

@@ -91,18 +91,29 @@
 
 #pragma mark - HTML Parser
 
-+(NSArray *)parseHTMLToMusicTableByUrl:(NSURL *)url
++(NSMutableArray *)parseHTMLToMusicTableByUrl:(NSURL *)url
 {
     NSData *data = [[NSData alloc] initWithContentsOfURL:url];
     
     NSString *query = @"/html/body/div[@class='music-main']/div/div/div[@class='main-body']/div/div[@class='search-result-container']/div[1]/ul/li/div";
     xmlDocPtr document = htmlReadMemory([data bytes], (int)[data length], "", nil, HTML_PARSE_NOWARNING | HTML_PARSE_NOERROR);
+    
+    if (document == NULL)
+    {
+        NSLog(@"Unable to parse.");
+        return nil;
+    }
     xmlXPathContextPtr xpathCtx = xmlXPathNewContext(document);
     xmlXPathObjectPtr xpathObj = xmlXPathEvalExpression((xmlChar *)[query cStringUsingEncoding:NSUTF8StringEncoding], xpathCtx);
     xmlNodeSetPtr nodes = xpathObj->nodesetval;
     
+    if (nodes == NULL) {
+        NSLog(@"no nodes");
+        return nil;
+    }
+    
     NSMutableArray *resultNodes = [NSMutableArray array];
-    for (NSInteger i = 0; i < 1; i++)
+    for (NSInteger i = 0; i < nodes->nodeNr; i++)
     {
         NSDictionary *nodeDictionary = DictionaryFromNode(nodes->nodeTab[i], nil,false);
         if (nodeDictionary)
@@ -140,41 +151,46 @@ xmlNodePtr FindNodeByNodeNameAndAttribute(xmlNodePtr currentNode, const char *no
     return nil;
 }
 
+NSDictionary *DictionaryFromAttribute(xmlNodePtr node)
+{
+    if (node) {
+        NSMutableDictionary *dict= [[NSMutableDictionary alloc] initWithCapacity:10];
+        xmlAttr *attribute = node->properties;
+        while (attribute) {
+            [dict setObject:[NSString stringWithCString:(const char *)attribute->children->content encoding:NSUTF8StringEncoding]
+                     forKey:[NSString stringWithCString:(const char *)attribute->name encoding:NSUTF8StringEncoding]];
+            attribute = attribute->next;
+        }
+        return dict;
+    }
+    return nil;
+}
+
 NSDictionary *DictionaryFromNode(xmlNodePtr currentNode, NSMutableDictionary *parentResult,BOOL parentContent)
 {
-    NSMutableDictionary *songInfo = [NSMutableDictionary dictionary];
-    NSMutableDictionary *singerInfo = [NSMutableDictionary dictionary];
-    
+    NSDictionary *songInfo;
+    NSDictionary *singerInfo;
+    NSDictionary *albumInfo;
     xmlNodePtr originNode = currentNode->children;
+    xmlNodePtr childNode;
     
-    xmlNodePtr childNode1 = FindNodeByNodeNameAndAttribute(originNode, "span", "song-title");
-    childNode1 = childNode1->children;
-    childNode1 = FindNodeByNodeNameAndAttribute(childNode1, "a", nil);
-    xmlAttr *attribute1 = childNode1->properties;
-    while (attribute1) {
-        [songInfo setObject:[NSString stringWithCString:(const char *)attribute1->children->content encoding:NSUTF8StringEncoding]
-                     forKey:[NSString stringWithCString:(const char *)attribute1->name encoding:NSUTF8StringEncoding]];
-        attribute1 = attribute1->next;
-    }
+    childNode = FindNodeByNodeNameAndAttribute(originNode, "span", "song-title");
+    if(childNode)childNode = FindNodeByNodeNameAndAttribute(childNode->children, "a", nil);
+    if(childNode)songInfo = DictionaryFromAttribute(childNode);
     
-    xmlNodePtr childNode2 = FindNodeByNodeNameAndAttribute(originNode, "span", "singer");
-    childNode2 = childNode2->children;
-    childNode2 = FindNodeByNodeNameAndAttribute(childNode2, "span", "author_list");
-    xmlAttr *attribute2 = childNode2->properties;
-    while (attribute2) {
-        [singerInfo setObject:[NSString stringWithCString:(const char *)attribute2->children->content encoding:NSUTF8StringEncoding]
-                     forKey:[NSString stringWithCString:(const char *)attribute2->name encoding:NSUTF8StringEncoding]];
-        attribute2 = attribute2->next;
-    }
+    childNode = FindNodeByNodeNameAndAttribute(originNode, "span", "singer");
+    if(childNode)childNode = FindNodeByNodeNameAndAttribute(childNode->children, "span", "author_list");
+    if(childNode)singerInfo = DictionaryFromAttribute(childNode);
+    
+    childNode = FindNodeByNodeNameAndAttribute(originNode, "span", "album-title");
+    if(childNode)childNode = FindNodeByNodeNameAndAttribute(childNode->children, "a", nil);
+    if(childNode)albumInfo = DictionaryFromAttribute(childNode);
     
     xmlBufferPtr buffer = xmlBufferCreate();
     xmlNodeDump(buffer, currentNode->doc, currentNode, 0, 0);
     
-//    NSString *rawContent = [NSString stringWithCString:(const char *)buffer->content encoding:NSUTF8StringEncoding];
-//    [resultForNode setObject:rawContent forKey:@"raw"];
-    
     xmlBufferFree(buffer);
-    NSDictionary *resultForNode = [NSDictionary dictionaryWithObjectsAndKeys:songInfo, @"song", singerInfo, @"singer", nil];
+    NSDictionary *resultForNode = [NSDictionary dictionaryWithObjectsAndKeys:songInfo, @"song", singerInfo, @"singer", albumInfo, @"album", nil];
     return resultForNode;
 }
 
